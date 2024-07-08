@@ -1,0 +1,531 @@
+var successSound = new Audio("{{ asset('audio/success.mp3') }}");
+var errorSound = new Audio("{{ asset('audio/error.mp3') }}");
+var warningSound = new Audio("{{ asset('audio/warning.wav') }}");
+$(document).ready(function() {
+    var table = '';
+    console.log('Merchants ready');
+
+    drawData();
+    newData();
+    var merchantId = 0;
+    var payMerchantId = 0;
+    $.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        }
+
+    });
+    toastr.options = {
+        "closeButton": true,
+        "debug": false,
+        "newestOnTop": true,
+        "progressBar": false,
+        "positionClass": "toast-bottom-right",
+        "preventDuplicates": true,
+        "onclick": null,
+        "showDuration": "300",
+        "hideDuration": "1000",
+        "timeOut": "2000",
+        "extendedTimeOut": "1000",
+        "showEasing": "swing",
+        "hideEasing": "linear",
+        "showMethod": "fadeIn",
+        "hideMethod": "fadeOut"
+    }
+
+});
+
+function drawData() {
+    headertable = $('#HeaderView')
+        .on('init.dt', function() {
+            console.log('Table initialisation complete: ' + new Date().getTime());
+        })
+        .DataTable({
+            "lengthMenu": [
+                [5, 10, 25, 50, -1],
+                [5, 10, 25, 50, "All"]
+            ],
+            ajax: "{{ route('searlco.getheaderData') }}",
+            "stateSave": true,
+            columns: [
+
+                {
+                    data: 'id',
+
+                },
+                {
+                    data: null,
+                    render: function(row, data, type) {
+                        if (row.logo === '') {
+                            return "<img src='{{ asset('testimg/dummy.png') }}' width='50px' height='50px'/>";
+                        } else {
+                            return "<img src='{{ asset('testimg') }}/" + row.logo +
+                                "' width='50px' height='50px'/>";
+                        }
+
+                    }
+                },
+                {
+                    data: 'login',
+
+                },
+                {
+                    data: 'signup',
+
+                },
+                {
+                    data: null,
+                    render: function(row, data, type) {
+                        if (row.haeder_status === 'active') {
+
+                            return "<label class='label label-success'>Active</label>";
+                        } else {
+                            return "<label class='label label-dark'>Suspend</label>";
+                        }
+
+                    }
+                },
+
+                {
+                    data: null,
+                    render: function(row, data, type) {
+                        var actions = "";
+                        actions += "<div class='btn-group'>" +
+                            "<button data-toggle='dropdown' class='btn btn-info btn-small dropdown-toggle'>Select Action <span class='caret'></span></button>" +
+                            "<ul class='dropdown-menu'>" +
+                            "<li><a  href='javascript:;' onclick='javascript:statusModel(" + row.id +
+                            ")'>ChangeStatus</a></li>" +
+                            "<li><a  href='javascript:;' onclick='javascript:updateModel(" +
+                            row.id + ")'>Update</a></li>" +
+                            "<li><a  href='javascript:;' onclick='javascript:deleteModel(" +
+                            row.id +
+                            ")'  role='button' data-toggle='modal'>Remove</a></li>";
+
+                        actions += "</ul>" +
+                            "</div>";
+
+                        return actions;
+                    }
+                },
+
+            ],
+            "order": [
+                [1, 'asc']
+            ],
+
+
+        });
+
+
+
+}
+// ...................
+
+function newData() {
+
+    table = $('#MenuView')
+        .on('init.dt', function() {
+
+            console.log('Table initialisation complete: ' + new Date().getTime());
+        })
+
+
+    .DataTable({
+        "lengthMenu": [
+            [5, 10, 25, 50, -1],
+            [5, 10, 25, 50, "All"]
+        ],
+        ajax: "{{ route('searlco.getMenuData') }}",
+
+        "stateSave": true,
+
+
+        columns: [
+
+            {
+                data: 'id',
+
+            },
+            {
+                data: 'menu_name',
+
+            },
+            {
+                data: 'href',
+
+            },
+            {
+                data: null,
+                render: function(row, data, type) {
+                    var actions = "";
+                    actions += "<div class='btn-group'>" +
+                        "<button data-toggle='dropdown' class='btn btn-info btn-small dropdown-toggle'>Select Action <span class='caret'></span></button>" +
+                        "<ul class='dropdown-menu'>" +
+
+                        "<li><a  href='javascript:;' onclick='javascript:updatemenuModel(" +
+                        row
+                        .id + ")'>Update</a></li>" +
+                        "<li><a  href='javascript:;' onclick='javascript:deletemenuModel(" +
+                        row.id +
+                        ")'  role='button' data-toggle='modal'>Remove</a></li>";
+
+                    actions += "</ul>" +
+                        "</div>";
+
+                    return actions;
+                }
+            },
+
+        ],
+        "order": [
+            [1, 'asc']
+        ],
+
+
+    });
+
+
+
+}
+
+// ...............
+
+function deleteModel(id) {
+
+    $.ajax({
+            type: "GET",
+            url: "{{ route('searlco.deleteheaderData') }}",
+            data: {
+                id: id,
+            },
+        })
+        .done(function(data) {
+            id = data.id;
+            console.log(data);
+            warningSound.play();
+            Swal.fire({
+                title: "Are you sure you want to delete this row where id is:" + data.id + " ?",
+                text: "You won't be able to revert this",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Yes, delete it"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    let _token = "{{ csrf_token() }}";
+                    $.ajax({
+                        type: "POST",
+                        url: "{{ route('searlco.RemoveheaderData') }}",
+                        data: {
+                            id: id,
+                        },
+                        _token: _token,
+                    }).done(function(data) {
+                        headertable.ajax.reload();
+                        if (data == 1) {
+                            Swal.fire(
+                                "Deleted",
+                                "Row has been Removed Successfully",
+                                "success"
+                            )
+                            successSound.play();
+                        }
+
+                    });
+                }
+
+
+            })
+
+
+
+        });
+
+}
+
+
+function updateModel(id) {
+
+    $.ajax({
+            type: "GET",
+            url: "{{ route('searlco.EditheaderData') }}",
+            data: {
+                id: id,
+
+            },
+
+        })
+        .done(function(data) {
+            id = data.id;
+            console.log(data);
+            $('#login').val(data.login);
+            $('#signup').val(data.signup);
+            $('#id').val(data.id);
+            $('#exampleModal').modal('show');
+
+            $('#updateHeader').on('submit', function(e) {
+                e.preventDefault();
+                console.log('i am working fine');
+                //  console.log(formData);
+                let _token = "{{ csrf_token() }}";
+                $.ajax({
+                    type: "post",
+                    url: "{{ route('searlco.editsheaderData') }}",
+                    data: new FormData(this),
+                    dataType: 'JSON',
+                    contentType: false,
+                    cache: false,
+                    processData: false,
+                    _token: _token,
+                }).done(function(res) {
+                    console.log(res);
+                    $('#exampleModal').modal('hide');
+                    headertable.ajax.reload();
+                    if (res == 1) {
+                        Swal.fire(
+                            "Updated",
+                            "Data Updated Successfully",
+                            "success"
+                        )
+                        Command: toastr["success"]("Data Updated Successfully")
+                        successSound.play();
+                    }
+
+
+                });
+
+            });
+
+
+        });
+
+}
+$('#exampleModal').on('hidden.bs.modal', function() {
+        $(this).find('form').trigger('reset');
+    })
+    // ...................................
+
+function deletemenuModel(id) {
+
+    $.ajax({
+            type: "GET",
+            url: "{{ route('searlco.deleteMenuData') }}",
+            data: {
+                id: id,
+
+            },
+
+        })
+        .done(function(data) {
+
+            id = data.id;
+            console.log(data);
+            warningSound.play();
+            Swal.fire({
+                title: "Are you sure you want to delete this row where id is:" + data.id + " ?",
+                text: "You won't be able to revert this",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Yes, delete it"
+            }).then((result) => {
+                if (result.isConfirmed) {
+
+
+                    let _token = "{{ csrf_token() }}";
+                    $.ajax({
+                        type: "POST",
+                        url: "{{ route('searlco.RemoveMenuData') }}",
+                        data: {
+                            id: id,
+
+                        },
+                        _token: _token,
+                    }).done(function(data) {
+                        table.ajax.reload();
+                        if (data == 1) {
+
+                            Swal.fire(
+                                "Deleted",
+                                "Row has been Removed Successfully",
+                                "success"
+                            )
+                            successSound.play();
+                        }
+
+                    });
+                }
+
+
+            })
+
+
+
+        });
+
+}
+
+//................................................................................
+function statusModel(id) {
+
+    $.ajax({
+            type: "GET",
+            url: "{{ route('searlco.changeHeaderStatus') }}",
+            data: {
+                id: id,
+
+            },
+
+        })
+        .done(function(data) {
+            id = data.id;
+
+            // heading=data.heading;
+            // description=data.description;
+            // button1=data.button1;
+            // button2=data.button2;
+            console.log(data);
+            warningSound.play();
+            Swal.fire({
+                title: "Are you sure you want to Update Status where Id " + data.id + "?",
+                confirmButtonText: 'Change Status',
+                focusConfirm: false,
+                showCloseButton: true,
+            }).then((result) => {
+                console.log(result)
+                if (result.isConfirmed) {
+                    let _token = "{{ csrf_token() }}";
+                    $.ajax({
+                        type: "post",
+                        url: "{{ route('searlco.updateHeaderStatus') }}",
+                        data: {
+                            id: data.id,
+
+                        },
+                        _token: _token,
+                    }).done(function(data) {
+                        console.log(data);
+                        if (data == 0) {
+                            Command: toastr["error"](" ", "Status Already Active")
+                            errorSound.play();
+                        }
+                        headertable.ajax.reload();
+                        if (data == 1) {
+                            Swal.fire(
+                                "Updated",
+                                "Status Change Data updated Successfully",
+                                "success"
+                            )
+                            Command: toastr["success"]("Status Change Successfully")
+                            successSound.play();
+                        }
+
+                    });
+                }
+
+
+            })
+
+
+
+        });
+
+}
+//................................................................................
+
+function updatemenuModel(id) {
+
+    $.ajax({
+            type: "GET",
+            url: "{{ route('searlco.EditMenuData') }}",
+            data: {
+                id: id,
+
+            },
+
+        })
+        .done(function(data) {
+            id = data.id;
+            console.log(data);
+            warningSound.play();
+            Swal.fire({
+                title: "Are you sure you want to Update?",
+                html: "<div class='form-horizontal'>" +
+
+                    "<div class='control-group'>" +
+                    "<label class='control-label'>Menu Name</label>" +
+                    "<div class='controls'>" +
+                    "  <input name='menu' type='text'  value='" + data.menu_name +
+                    "' placeholder='Email' class='input-large'/>" +
+                    "<span class='help-inline'></span>" +
+                    "  </div>" +
+                    "<div class='control-group'>" +
+                    "<label class='control-label'> Menu Link</label>" +
+                    "<div class='controls'>" +
+                    "  <input name='link' type='text'  value='" + data.href +
+                    "' placeholder='Email' class='input-large'/>" +
+                    "<span class='help-inline'></span>" +
+                    "  </div>" +
+                    "</div>" +
+                    "</div>" +
+                    "</div>",
+
+                confirmButtonText: 'Update Record',
+                focusConfirm: false,
+                showCloseButton: true,
+                preConfirm: () => {
+                    const menu = Swal.getPopup().querySelector(
+                        'input[name=menu]').value
+                    const link = Swal.getPopup().querySelector('input[name=link]').value
+                        // const btn1 = Swal.getPopup().querySelector('input[name=button1]').value
+                        // const btn2 = Swal.getPopup().querySelector('input[name=button2]').value
+
+                    return {
+                        menu_name: menu,
+                        link: link,
+                    }
+
+
+
+                }
+            }).then((result) => {
+                console.log(result)
+                if (result.isConfirmed) {
+
+
+                    let _token = "{{ csrf_token() }}";
+                    $.ajax({
+                        type: "get",
+                        url: "{{ route('searlco.editsMenuData') }}",
+                        data: {
+                            id: data.id,
+                            menu_name: result.value.menu_name,
+                            link: result.value.link,
+
+                        },
+                        _token: _token,
+                    }).done(function(data) {
+                        console.log(data);
+                        table.ajax.reload();
+                        if (data == 1) {
+                            Swal.fire(
+                                "Updated",
+                                "Menu Data updated Successfully",
+                                "success"
+                            )
+                            successSound.play();
+                        }
+
+                    });
+                }
+
+
+            })
+
+
+
+        });
+
+}
